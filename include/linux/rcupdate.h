@@ -337,31 +337,44 @@ static inline void rcu_preempt_sleep_check(void) { }
 #define rcu_dereference_sparse(p, space)
 #endif /* #else #ifdef __CHECKER__ */
 
+#ifdef __cplusplus
+#define TYPEOF(x) typeof(x)
+#else
+#define TYPEOF(x) typeof(*(x)) *
+#endif
+
+
 #define __rcu_access_pointer(p, space) \
-({ \
-	typeof(*p) *_________p1 = (typeof(*p) *__force)READ_ONCE(p); \
-	rcu_dereference_sparse(p, space); \
-	((typeof(*p) __force __kernel *)(_________p1)); \
-})
+        ({ \
+                TYPEOF(p) _________p1 = (TYPEOF(p)__force )ACCESS_ONCE(p); \
+                rcu_dereference_sparse(p, space); \
+                ((TYPEOF(p) __force __kernel)(_________p1)); \
+        })
+
+
 #define __rcu_dereference_check(p, c, space) \
-({ \
-	/* Dependency order vs. p above. */ \
-	typeof(*p) *________p1 = (typeof(*p) *__force)READ_ONCE(p); \
-	RCU_LOCKDEP_WARN(!(c), "suspicious rcu_dereference_check() usage"); \
-	rcu_dereference_sparse(p, space); \
-	((typeof(*p) __force __kernel *)(________p1)); \
-})
+        ({ \
+	TYPEOF(p) ________p1 = (TYPEOF(p) __force)(p); \
+        RCU_LOCKDEP_WARN(!(c), "suspicious rcu_dereference_check() usage"); \
+        rcu_dereference_sparse(p, space); \
+        ((TYPEOF(p) __force __kernel )(________p1)); \
+        })
+
+
+
 #define __rcu_dereference_protected(p, c, space) \
 ({ \
-	RCU_LOCKDEP_WARN(!(c), "suspicious rcu_dereference_protected() usage"); \
-	rcu_dereference_sparse(p, space); \
-	((typeof(*p) __force __kernel *)(p)); \
+        RCU_LOCKDEP_WARN(!(c), "suspicious rcu_dereference_protected() usage"); \
+        rcu_dereference_sparse(p, space); \
+        ((TYPEOF(p) __force __kernel )(p)); \
 })
+
+
 #define rcu_dereference_raw(p) \
 ({ \
 	/* Dependency order vs. p above. */ \
 	typeof(p) ________p1 = READ_ONCE(p); \
-	((typeof(*p) __force __kernel *)(________p1)); \
+	((TYPEOF(p) __force __kernel )(________p1)); \
 })
 
 /**
@@ -401,6 +414,7 @@ static inline void rcu_preempt_sleep_check(void) { }
  * please be careful when making changes to rcu_assign_pointer() and the
  * other macros that it invokes.
  */
+
 #define rcu_assign_pointer(p, v)					      \
 ({									      \
 	uintptr_t _r_a_p__v = (uintptr_t)(v);				      \

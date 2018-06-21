@@ -27,7 +27,12 @@
  * e.g. in a structure initializer (or where-ever else comma expressions
  * aren't permitted).
  */
+#ifdef __cplusplus
+#define BUILD_BUG_ON_ZERO(e) ((size_t) (e != -1) )
+#else
 #define BUILD_BUG_ON_ZERO(e) (sizeof(struct { int:(-!!(e)); }))
+#endif
+
 #define BUILD_BUG_ON_NULL(e) ((void *)sizeof(struct { int:(-!!(e)); }))
 
 /*

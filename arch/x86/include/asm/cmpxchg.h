@@ -82,18 +82,18 @@ extern void __add_wrong_size(void)
  * store NEW in MEM.  Return the initial value in MEM.  Success is
  * indicated by comparing RETURN with OLD.
  */
-#define __raw_cmpxchg(ptr, old, new, size, lock)			\
+#define __raw_cmpxchg(ptr, old, new1, size, lock)			\
 ({									\
 	__typeof__(*(ptr)) __ret;					\
 	__typeof__(*(ptr)) __old = (old);				\
-	__typeof__(*(ptr)) __new = (new);				\
+	__typeof__(*(ptr)) __new1 = (new1);				\
 	switch (size) {							\
 	case __X86_CASE_B:						\
 	{								\
 		volatile u8 *__ptr = (volatile u8 *)(ptr);		\
 		asm volatile(lock "cmpxchgb %2,%1"			\
 			     : "=a" (__ret), "+m" (*__ptr)		\
-			     : "q" (__new), "0" (__old)			\
+			     : "q" (__new1), "0" (__old)			\
 			     : "memory");				\
 		break;							\
 	}								\
@@ -102,7 +102,7 @@ extern void __add_wrong_size(void)
 		volatile u16 *__ptr = (volatile u16 *)(ptr);		\
 		asm volatile(lock "cmpxchgw %2,%1"			\
 			     : "=a" (__ret), "+m" (*__ptr)		\
-			     : "r" (__new), "0" (__old)			\
+			     : "r" (__new1), "0" (__old)			\
 			     : "memory");				\
 		break;							\
 	}								\
@@ -111,7 +111,7 @@ extern void __add_wrong_size(void)
 		volatile u32 *__ptr = (volatile u32 *)(ptr);		\
 		asm volatile(lock "cmpxchgl %2,%1"			\
 			     : "=a" (__ret), "+m" (*__ptr)		\
-			     : "r" (__new), "0" (__old)			\
+			     : "r" (__new1), "0" (__old)			\
 			     : "memory");				\
 		break;							\
 	}								\
@@ -120,7 +120,7 @@ extern void __add_wrong_size(void)
 		volatile u64 *__ptr = (volatile u64 *)(ptr);		\
 		asm volatile(lock "cmpxchgq %2,%1"			\
 			     : "=a" (__ret), "+m" (*__ptr)		\
-			     : "r" (__new), "0" (__old)			\
+			     : "r" (__new1), "0" (__old)			\
 			     : "memory");				\
 		break;							\
 	}								\
@@ -130,14 +130,14 @@ extern void __add_wrong_size(void)
 	__ret;								\
 })
 
-#define __cmpxchg(ptr, old, new, size)					\
-	__raw_cmpxchg((ptr), (old), (new), (size), LOCK_PREFIX)
+#define __cmpxchg(ptr, old, new1, size)					\
+	__raw_cmpxchg((ptr), (old), (new1), (size), LOCK_PREFIX)
 
-#define __sync_cmpxchg(ptr, old, new, size)				\
-	__raw_cmpxchg((ptr), (old), (new), (size), "lock; ")
+#define __sync_cmpxchg(ptr, old, new1, size)				\
+	__raw_cmpxchg((ptr), (old), (new1), (size), "lock; ")
 
-#define __cmpxchg_local(ptr, old, new, size)				\
-	__raw_cmpxchg((ptr), (old), (new), (size), "")
+#define __cmpxchg_local(ptr, old, new1, size)				\
+	__raw_cmpxchg((ptr), (old), (new1), (size), "")
 
 #ifdef CONFIG_X86_32
 # include <asm/cmpxchg_32.h>
@@ -145,68 +145,68 @@ extern void __add_wrong_size(void)
 # include <asm/cmpxchg_64.h>
 #endif
 
-#define cmpxchg(ptr, old, new)						\
-	__cmpxchg(ptr, old, new, sizeof(*(ptr)))
+#define cmpxchg(ptr, old, new1)						\
+	__cmpxchg(ptr, old, new1, sizeof(*(ptr)))
 
-#define sync_cmpxchg(ptr, old, new)					\
-	__sync_cmpxchg(ptr, old, new, sizeof(*(ptr)))
+#define sync_cmpxchg(ptr, old, new1)					\
+	__sync_cmpxchg(ptr, old, new1, sizeof(*(ptr)))
 
-#define cmpxchg_local(ptr, old, new)					\
-	__cmpxchg_local(ptr, old, new, sizeof(*(ptr)))
+#define cmpxchg_local(ptr, old, new1)					\
+	__cmpxchg_local(ptr, old, new1, sizeof(*(ptr)))
 
 
-#define __raw_try_cmpxchg(_ptr, _pold, _new, size, lock)		\
+#define __raw_try_cmpxchg(_ptr, _pold, _new1, size, lock)		\
 ({									\
 	bool success;							\
 	__typeof__(_ptr) _old = (__typeof__(_ptr))(_pold);		\
 	__typeof__(*(_ptr)) __old = *_old;				\
-	__typeof__(*(_ptr)) __new = (_new);				\
+	__typeof__(*(_ptr)) __new1 = (_new1);				\
 	switch (size) {							\
 	case __X86_CASE_B:						\
 	{								\
 		volatile u8 *__ptr = (volatile u8 *)(_ptr);		\
-		asm volatile(lock "cmpxchgb %[new], %[ptr]"		\
+		asm volatile(lock "cmpxchgb %[new1], %[ptr]"		\
 			     CC_SET(z)					\
 			     : CC_OUT(z) (success),			\
 			       [ptr] "+m" (*__ptr),			\
 			       [old] "+a" (__old)			\
-			     : [new] "q" (__new)			\
+			     : [new1] "q" (__new1)			\
 			     : "memory");				\
 		break;							\
 	}								\
 	case __X86_CASE_W:						\
 	{								\
 		volatile u16 *__ptr = (volatile u16 *)(_ptr);		\
-		asm volatile(lock "cmpxchgw %[new], %[ptr]"		\
+		asm volatile(lock "cmpxchgw %[new1], %[ptr]"		\
 			     CC_SET(z)					\
 			     : CC_OUT(z) (success),			\
 			       [ptr] "+m" (*__ptr),			\
 			       [old] "+a" (__old)			\
-			     : [new] "r" (__new)			\
+			     : [new1] "r" (__new1)			\
 			     : "memory");				\
 		break;							\
 	}								\
 	case __X86_CASE_L:						\
 	{								\
 		volatile u32 *__ptr = (volatile u32 *)(_ptr);		\
-		asm volatile(lock "cmpxchgl %[new], %[ptr]"		\
+		asm volatile(lock "cmpxchgl %[new1], %[ptr]"		\
 			     CC_SET(z)					\
 			     : CC_OUT(z) (success),			\
 			       [ptr] "+m" (*__ptr),			\
 			       [old] "+a" (__old)			\
-			     : [new] "r" (__new)			\
+			     : [new1] "r" (__new1)			\
 			     : "memory");				\
 		break;							\
 	}								\
 	case __X86_CASE_Q:						\
 	{								\
 		volatile u64 *__ptr = (volatile u64 *)(_ptr);		\
-		asm volatile(lock "cmpxchgq %[new], %[ptr]"		\
+		asm volatile(lock "cmpxchgq %[new1], %[ptr]"		\
 			     CC_SET(z)					\
 			     : CC_OUT(z) (success),			\
 			       [ptr] "+m" (*__ptr),			\
 			       [old] "+a" (__old)			\
-			     : [new] "r" (__new)			\
+			     : [new1] "r" (__new1)			\
 			     : "memory");				\
 		break;							\
 	}								\
@@ -218,11 +218,11 @@ extern void __add_wrong_size(void)
 	likely(success);						\
 })
 
-#define __try_cmpxchg(ptr, pold, new, size)				\
-	__raw_try_cmpxchg((ptr), (pold), (new), (size), LOCK_PREFIX)
+#define __try_cmpxchg(ptr, pold, new1, size)				\
+	__raw_try_cmpxchg((ptr), (pold), (new1), (size), LOCK_PREFIX)
 
-#define try_cmpxchg(ptr, pold, new)					\
-	__try_cmpxchg((ptr), (pold), (new), sizeof(*(ptr)))
+#define try_cmpxchg(ptr, pold, new1)					\
+	__try_cmpxchg((ptr), (pold), (new1), sizeof(*(ptr)))
 
 /*
  * xadd() adds "inc" to "*ptr" and atomically returns the previous
@@ -236,8 +236,8 @@ extern void __add_wrong_size(void)
 #define __cmpxchg_double(pfx, p1, p2, o1, o2, n1, n2)			\
 ({									\
 	bool __ret;							\
-	__typeof__(*(p1)) __old1 = (o1), __new1 = (n1);			\
-	__typeof__(*(p2)) __old2 = (o2), __new2 = (n2);			\
+	__typeof__(*(p1)) __old1 = (o1), __new11 = (n1);			\
+	__typeof__(*(p2)) __old2 = (o2), __new12 = (n2);			\
 	BUILD_BUG_ON(sizeof(*(p1)) != sizeof(long));			\
 	BUILD_BUG_ON(sizeof(*(p2)) != sizeof(long));			\
 	VM_BUG_ON((unsigned long)(p1) % (2 * sizeof(long)));		\
@@ -246,7 +246,7 @@ extern void __add_wrong_size(void)
 		     : "=a" (__ret), "+d" (__old2),			\
 		       "+m" (*(p1)), "+m" (*(p2))			\
 		     : "i" (2 * sizeof(long)), "a" (__old1),		\
-		       "b" (__new1), "c" (__new2));			\
+		       "b" (__new11), "c" (__new12));			\
 	__ret;								\
 })
 

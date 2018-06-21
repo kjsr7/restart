@@ -7,6 +7,10 @@
 #include <linux/stddef.h>
 #include <linux/debugobjects.h>
 #include <linux/stringify.h>
+#ifdef __cplusplus
+#include <linux/hrtimer.h>
+#endif
+
 
 struct tvec_base;
 

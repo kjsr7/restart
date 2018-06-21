@@ -1068,6 +1068,13 @@ struct task_struct {
 	/* Number of pages to reclaim on returning to userland: */
 	unsigned int			memcg_nr_pages_over_high;
 #endif
+#ifdef CONFIG_CXX_RUNTIME
+        /* Copied from unwind-cxx.h */
+        struct {
+                void *caughtExceptions;
+                unsigned int uncaughtExceptions;
+        } cxa_eh_globals;
+#endif
 
 #ifdef CONFIG_UPROBES
 	struct uprobe_task		*utask;

@@ -789,7 +789,7 @@ slow_path:
 		struct rhlist_head *list;
 
 		list = container_of(obj, struct rhlist_head, rhead);
-		RCU_INIT_POINTER(list->next, NULL);
+		rcu_assign_pointer(list->next, NULL);
 	}
 
 	rcu_assign_pointer(*pprev, obj);
