@@ -124,19 +124,65 @@ extern void cleanup_module(void);
 #define console_initcall(fn)		module_init(fn)
 #define security_initcall(fn)		module_init(fn)
 
+#if defined(CONFIG_CXX_RUNTIME) && defined(__cplusplus)
+/* These are defined in lib/gcc/crtstuff.c */
+extern void begin_init(void);
+extern void end_init(void);
+extern void begin_fini(void);
+
+
+#define module_init(initfn)                                     \
+        int init_module(void)                                   \
+        {                                                       \
+                begin_init();                                   \
+                end_init();                                     \
+                return initfn();                                \
+        }
+
+#define module_exit(exitfn)                                     \
+#define module_exit(exitfn)                                     \
+        void cleanup_module(void)                               \
+        {                                                       \
+                exitfn();                                       \
+                begin_fini();                                   \
+        } 
+
+#else /* !CONFIG_CXX_RUNTIME || !__cplusplus */
+/* These macros create a dummy inline: gcc 2.9x does not count alias
+ * as usage, hence the `unused function' warning when __init functions
+ * are declared static. We use the dummy __*_module_inline functions
+ * both to kill the warning and check the type of the init/cleanup
+ * function. */
+
+/* Each module must use one module_init(), or one no_module_init */
+#define module_init(initfn)                                     \
+        static inline initcall_t __inittest(void)               \
+        { return initfn; }                                      \
+        int init_module(void) __attribute__((alias(#initfn)));
+
+/* This is only required if you want to be unloadable. */
+#define module_exit(exitfn)                                     \
+        static inline exitcall_t __exittest(void)               \
+        { return exitfn; }                                      \
+        void cleanup_module(void) __attribute__((alias(#exitfn)));
+#endif /* !CONFIG_CXX_RUNTIME || !__cplusplus */
+
+
+
 /* Each module must use one module_init(). */
-#define module_init(initfn)					\
+/*#define module_init(initfn)					\
 	static inline initcall_t __maybe_unused __inittest(void)		\
 	{ return initfn; }					\
 	int init_module(void) __attribute__((alias(#initfn)));
-
+*/
 /* This is only required if you want to be unloadable. */
-#define module_exit(exitfn)					\
+/*#define module_exit(exitfn)					\
 	static inline exitcall_t __maybe_unused __exittest(void)		\
 	{ return exitfn; }					\
 	void cleanup_module(void) __attribute__((alias(#exitfn)));
-
+*/
 #endif
+
 
 /* This means "can be init if no module support, otherwise module load
    may call it." */
