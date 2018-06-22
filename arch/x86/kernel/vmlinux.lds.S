@@ -372,10 +372,10 @@ SECTIONS
         DWARF_DEBUG
 
 	/* Sections to be discarded */
-	DISCARDS
+/*	DISCARDS
 	/DISCARD/ : {
 		*(.eh_frame)
-	}
+	}*/
 }
 
 
