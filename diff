@@ -1,0 +1,1166 @@
+Only in linux-4.14.41/arch/sh/boot/compressed: vmlinux.scr
+Only in linux-4.14.41/arch/sh/boot/romimage: vmlinux.scr
+Only in restart/arch/x86/boot/compressed: .kaslr.c.swp
+diff -ur linux-4.14.41/arch/x86/boot/compressed/misc.c restart/arch/x86/boot/compressed/misc.c
+--- linux-4.14.41/arch/x86/boot/compressed/misc.c	2018-05-16 13:40:32.000000000 +0530
++++ restart/arch/x86/boot/compressed/misc.c	2018-06-22 13:12:04.353359955 +0530
+@@ -311,6 +311,7 @@
+ 		case PT_LOAD:
+ #ifdef CONFIG_X86_64
+ 			if ((phdr->p_align % 0x200000) != 0)
++				debug_putaddr(phdr->align);
+ 				error("Alignment of LOAD segment isn't multiple of 2MB");
+ #endif
+ #ifdef CONFIG_RELOCATABLE
+Only in restart/arch/x86/boot/compressed: .pagetable.c.swp
+diff -ur linux-4.14.41/arch/x86/include/asm/cmpxchg.h restart/arch/x86/include/asm/cmpxchg.h
+--- linux-4.14.41/arch/x86/include/asm/cmpxchg.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/arch/x86/include/asm/cmpxchg.h	2018-06-22 09:57:37.309858039 +0530
+@@ -82,18 +82,18 @@
+  * store NEW in MEM.  Return the initial value in MEM.  Success is
+  * indicated by comparing RETURN with OLD.
+  */
+-#define __raw_cmpxchg(ptr, old, new, size, lock)			\
++#define __raw_cmpxchg(ptr, old, new1, size, lock)			\
+ ({									\
+ 	__typeof__(*(ptr)) __ret;					\
+ 	__typeof__(*(ptr)) __old = (old);				\
+-	__typeof__(*(ptr)) __new = (new);				\
++	__typeof__(*(ptr)) __new1 = (new1);				\
+ 	switch (size) {							\
+ 	case __X86_CASE_B:						\
+ 	{								\
+ 		volatile u8 *__ptr = (volatile u8 *)(ptr);		\
+ 		asm volatile(lock "cmpxchgb %2,%1"			\
+ 			     : "=a" (__ret), "+m" (*__ptr)		\
+-			     : "q" (__new), "0" (__old)			\
++			     : "q" (__new1), "0" (__old)			\
+ 			     : "memory");				\
+ 		break;							\
+ 	}								\
+@@ -102,7 +102,7 @@
+ 		volatile u16 *__ptr = (volatile u16 *)(ptr);		\
+ 		asm volatile(lock "cmpxchgw %2,%1"			\
+ 			     : "=a" (__ret), "+m" (*__ptr)		\
+-			     : "r" (__new), "0" (__old)			\
++			     : "r" (__new1), "0" (__old)			\
+ 			     : "memory");				\
+ 		break;							\
+ 	}								\
+@@ -111,7 +111,7 @@
+ 		volatile u32 *__ptr = (volatile u32 *)(ptr);		\
+ 		asm volatile(lock "cmpxchgl %2,%1"			\
+ 			     : "=a" (__ret), "+m" (*__ptr)		\
+-			     : "r" (__new), "0" (__old)			\
++			     : "r" (__new1), "0" (__old)			\
+ 			     : "memory");				\
+ 		break;							\
+ 	}								\
+@@ -120,7 +120,7 @@
+ 		volatile u64 *__ptr = (volatile u64 *)(ptr);		\
+ 		asm volatile(lock "cmpxchgq %2,%1"			\
+ 			     : "=a" (__ret), "+m" (*__ptr)		\
+-			     : "r" (__new), "0" (__old)			\
++			     : "r" (__new1), "0" (__old)			\
+ 			     : "memory");				\
+ 		break;							\
+ 	}								\
+@@ -130,14 +130,14 @@
+ 	__ret;								\
+ })
+ 
+-#define __cmpxchg(ptr, old, new, size)					\
+-	__raw_cmpxchg((ptr), (old), (new), (size), LOCK_PREFIX)
++#define __cmpxchg(ptr, old, new1, size)					\
++	__raw_cmpxchg((ptr), (old), (new1), (size), LOCK_PREFIX)
+ 
+-#define __sync_cmpxchg(ptr, old, new, size)				\
+-	__raw_cmpxchg((ptr), (old), (new), (size), "lock; ")
++#define __sync_cmpxchg(ptr, old, new1, size)				\
++	__raw_cmpxchg((ptr), (old), (new1), (size), "lock; ")
+ 
+-#define __cmpxchg_local(ptr, old, new, size)				\
+-	__raw_cmpxchg((ptr), (old), (new), (size), "")
++#define __cmpxchg_local(ptr, old, new1, size)				\
++	__raw_cmpxchg((ptr), (old), (new1), (size), "")
+ 
+ #ifdef CONFIG_X86_32
+ # include <asm/cmpxchg_32.h>
+@@ -145,68 +145,68 @@
+ # include <asm/cmpxchg_64.h>
+ #endif
+ 
+-#define cmpxchg(ptr, old, new)						\
+-	__cmpxchg(ptr, old, new, sizeof(*(ptr)))
++#define cmpxchg(ptr, old, new1)						\
++	__cmpxchg(ptr, old, new1, sizeof(*(ptr)))
+ 
+-#define sync_cmpxchg(ptr, old, new)					\
+-	__sync_cmpxchg(ptr, old, new, sizeof(*(ptr)))
++#define sync_cmpxchg(ptr, old, new1)					\
++	__sync_cmpxchg(ptr, old, new1, sizeof(*(ptr)))
+ 
+-#define cmpxchg_local(ptr, old, new)					\
+-	__cmpxchg_local(ptr, old, new, sizeof(*(ptr)))
++#define cmpxchg_local(ptr, old, new1)					\
++	__cmpxchg_local(ptr, old, new1, sizeof(*(ptr)))
+ 
+ 
+-#define __raw_try_cmpxchg(_ptr, _pold, _new, size, lock)		\
++#define __raw_try_cmpxchg(_ptr, _pold, _new1, size, lock)		\
+ ({									\
+ 	bool success;							\
+ 	__typeof__(_ptr) _old = (__typeof__(_ptr))(_pold);		\
+ 	__typeof__(*(_ptr)) __old = *_old;				\
+-	__typeof__(*(_ptr)) __new = (_new);				\
++	__typeof__(*(_ptr)) __new1 = (_new1);				\
+ 	switch (size) {							\
+ 	case __X86_CASE_B:						\
+ 	{								\
+ 		volatile u8 *__ptr = (volatile u8 *)(_ptr);		\
+-		asm volatile(lock "cmpxchgb %[new], %[ptr]"		\
++		asm volatile(lock "cmpxchgb %[new1], %[ptr]"		\
+ 			     CC_SET(z)					\
+ 			     : CC_OUT(z) (success),			\
+ 			       [ptr] "+m" (*__ptr),			\
+ 			       [old] "+a" (__old)			\
+-			     : [new] "q" (__new)			\
++			     : [new1] "q" (__new1)			\
+ 			     : "memory");				\
+ 		break;							\
+ 	}								\
+ 	case __X86_CASE_W:						\
+ 	{								\
+ 		volatile u16 *__ptr = (volatile u16 *)(_ptr);		\
+-		asm volatile(lock "cmpxchgw %[new], %[ptr]"		\
++		asm volatile(lock "cmpxchgw %[new1], %[ptr]"		\
+ 			     CC_SET(z)					\
+ 			     : CC_OUT(z) (success),			\
+ 			       [ptr] "+m" (*__ptr),			\
+ 			       [old] "+a" (__old)			\
+-			     : [new] "r" (__new)			\
++			     : [new1] "r" (__new1)			\
+ 			     : "memory");				\
+ 		break;							\
+ 	}								\
+ 	case __X86_CASE_L:						\
+ 	{								\
+ 		volatile u32 *__ptr = (volatile u32 *)(_ptr);		\
+-		asm volatile(lock "cmpxchgl %[new], %[ptr]"		\
++		asm volatile(lock "cmpxchgl %[new1], %[ptr]"		\
+ 			     CC_SET(z)					\
+ 			     : CC_OUT(z) (success),			\
+ 			       [ptr] "+m" (*__ptr),			\
+ 			       [old] "+a" (__old)			\
+-			     : [new] "r" (__new)			\
++			     : [new1] "r" (__new1)			\
+ 			     : "memory");				\
+ 		break;							\
+ 	}								\
+ 	case __X86_CASE_Q:						\
+ 	{								\
+ 		volatile u64 *__ptr = (volatile u64 *)(_ptr);		\
+-		asm volatile(lock "cmpxchgq %[new], %[ptr]"		\
++		asm volatile(lock "cmpxchgq %[new1], %[ptr]"		\
+ 			     CC_SET(z)					\
+ 			     : CC_OUT(z) (success),			\
+ 			       [ptr] "+m" (*__ptr),			\
+ 			       [old] "+a" (__old)			\
+-			     : [new] "r" (__new)			\
++			     : [new1] "r" (__new1)			\
+ 			     : "memory");				\
+ 		break;							\
+ 	}								\
+@@ -218,11 +218,11 @@
+ 	likely(success);						\
+ })
+ 
+-#define __try_cmpxchg(ptr, pold, new, size)				\
+-	__raw_try_cmpxchg((ptr), (pold), (new), (size), LOCK_PREFIX)
++#define __try_cmpxchg(ptr, pold, new1, size)				\
++	__raw_try_cmpxchg((ptr), (pold), (new1), (size), LOCK_PREFIX)
+ 
+-#define try_cmpxchg(ptr, pold, new)					\
+-	__try_cmpxchg((ptr), (pold), (new), sizeof(*(ptr)))
++#define try_cmpxchg(ptr, pold, new1)					\
++	__try_cmpxchg((ptr), (pold), (new1), sizeof(*(ptr)))
+ 
+ /*
+  * xadd() adds "inc" to "*ptr" and atomically returns the previous
+@@ -236,8 +236,8 @@
+ #define __cmpxchg_double(pfx, p1, p2, o1, o2, n1, n2)			\
+ ({									\
+ 	bool __ret;							\
+-	__typeof__(*(p1)) __old1 = (o1), __new1 = (n1);			\
+-	__typeof__(*(p2)) __old2 = (o2), __new2 = (n2);			\
++	__typeof__(*(p1)) __old1 = (o1), __new11 = (n1);			\
++	__typeof__(*(p2)) __old2 = (o2), __new12 = (n2);			\
+ 	BUILD_BUG_ON(sizeof(*(p1)) != sizeof(long));			\
+ 	BUILD_BUG_ON(sizeof(*(p2)) != sizeof(long));			\
+ 	VM_BUG_ON((unsigned long)(p1) % (2 * sizeof(long)));		\
+@@ -246,7 +246,7 @@
+ 		     : "=a" (__ret), "+d" (__old2),			\
+ 		       "+m" (*(p1)), "+m" (*(p2))			\
+ 		     : "i" (2 * sizeof(long)), "a" (__old1),		\
+-		       "b" (__new1), "c" (__new2));			\
++		       "b" (__new11), "c" (__new12));			\
+ 	__ret;								\
+ })
+ 
+diff -ur linux-4.14.41/arch/x86/include/asm/linkage.h restart/arch/x86/include/asm/linkage.h
+--- linux-4.14.41/arch/x86/include/asm/linkage.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/arch/x86/include/asm/linkage.h	2018-06-22 09:57:37.313858055 +0530
+@@ -4,8 +4,14 @@
+ 
+ #include <linux/stringify.h>
+ 
++
++#ifdef __cplusplus
++#undef notrace
++#define notrace
++#else
+ #undef notrace
+ #define notrace __attribute__((no_instrument_function))
++#endif
+ 
+ #ifdef CONFIG_X86_32
+ #define asmlinkage CPP_ASMLINKAGE __attribute__((regparm(0)))
+diff -ur linux-4.14.41/arch/x86/include/asm/pgtable_types.h restart/arch/x86/include/asm/pgtable_types.h
+--- linux-4.14.41/arch/x86/include/asm/pgtable_types.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/arch/x86/include/asm/pgtable_types.h	2018-06-22 11:45:59.329843274 +0530
+@@ -325,7 +325,10 @@
+ 
+ static inline pud_t native_make_pud(pudval_t val)
+ {
+-	return (pud_t) { .p4d.pgd = native_make_pgd(val) };
++//	return (pud_t) { .p4d.pgd = native_make_pgd(val) };
++pud_t a;
++a.p4d.pgd = native_make_pgd(val);
++return a;
+ }
+ 
+ static inline pudval_t native_pud_val(pud_t pud)
+@@ -351,7 +354,10 @@
+ 
+ static inline pmd_t native_make_pmd(pmdval_t val)
+ {
+-	return (pmd_t) { .pud.p4d.pgd = native_make_pgd(val) };
++//	return (pmd_t) { .pud.p4d.pgd = native_make_pgd(val) };
++pmd_t a;
++a.pud.p4d.pgd = native_make_pgd(val);
++return a;
+ }
+ 
+ static inline pmdval_t native_pmd_val(pmd_t pmd)
+diff -ur linux-4.14.41/arch/x86/include/asm/string_64.h restart/arch/x86/include/asm/string_64.h
+--- linux-4.14.41/arch/x86/include/asm/string_64.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/arch/x86/include/asm/string_64.h	2018-06-22 09:57:37.317858072 +0530
+@@ -136,11 +136,13 @@
+ static __always_inline __must_check int
+ memcpy_mcsafe(void *dst, const void *src, size_t cnt)
+ {
++/*	
+ #ifdef CONFIG_X86_MCE
+ 	if (static_branch_unlikely(&mcsafe_key))
+ 		return memcpy_mcsafe_unrolled(dst, src, cnt);
+ 	else
+ #endif
++*/
+ 		memcpy(dst, src, cnt);
+ 	return 0;
+ }
+diff -ur linux-4.14.41/arch/x86/kernel/vmlinux.lds.S restart/arch/x86/kernel/vmlinux.lds.S
+--- linux-4.14.41/arch/x86/kernel/vmlinux.lds.S	2018-05-16 13:40:32.000000000 +0530
++++ restart/arch/x86/kernel/vmlinux.lds.S	2018-06-22 10:32:52.545859260 +0530
+@@ -372,10 +372,10 @@
+         DWARF_DEBUG
+ 
+ 	/* Sections to be discarded */
+-	DISCARDS
++/*	DISCARDS
+ 	/DISCARD/ : {
+ 		*(.eh_frame)
+-	}
++	}*/
+ }
+ 
+ 
+Only in restart: c++
+Only in linux-4.14.41: .get_maintainer.ignore
+Only in restart: .git
+Only in linux-4.14.41: .gitattributes
+diff -ur linux-4.14.41/include/asm-generic/vmlinux.lds.h restart/include/asm-generic/vmlinux.lds.h
+--- linux-4.14.41/include/asm-generic/vmlinux.lds.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/include/asm-generic/vmlinux.lds.h	2018-06-22 10:12:08.849344654 +0530
+@@ -547,7 +547,10 @@
+ 			KEEP(*(.init_array))		   \
+ 			VMLINUX_SYMBOL(__ctors_end) = .;
+ #else
+-#define KERNEL_CTORS()
++#define KERNEL_CTORS()  VMLINUX_SYMBOL(__ctors_start) = .; \
++		        KEEP(*(.ctors))			   \
++			VMLINUX_SYMBOL(__ctors_end) = .;
++
+ #endif
+ 
+ /* init and exit section handling */
+Only in restart/include: c++
+diff -ur linux-4.14.41/include/linux/build_bug.h restart/include/linux/build_bug.h
+--- linux-4.14.41/include/linux/build_bug.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/include/linux/build_bug.h	2018-06-22 09:57:42.469879680 +0530
+@@ -27,7 +27,12 @@
+  * e.g. in a structure initializer (or where-ever else comma expressions
+  * aren't permitted).
+  */
++#ifdef __cplusplus
++#define BUILD_BUG_ON_ZERO(e) ((size_t) (e != -1) )
++#else
+ #define BUILD_BUG_ON_ZERO(e) (sizeof(struct { int:(-!!(e)); }))
++#endif
++
+ #define BUILD_BUG_ON_NULL(e) ((void *)sizeof(struct { int:(-!!(e)); }))
+ 
+ /*
+diff -ur linux-4.14.41/include/linux/compiler.h restart/include/linux/compiler.h
+--- linux-4.14.41/include/linux/compiler.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/include/linux/compiler.h	2018-06-22 09:57:42.477879713 +0530
+@@ -235,7 +235,7 @@
+  * required ordering.
+  */
+ #include <asm/barrier.h>
+-
++#ifndef __cplusplus
+ #define __READ_ONCE(x, check)						\
+ ({									\
+ 	union { typeof(x) __val; char __c[1]; } __u;			\
+@@ -246,6 +246,19 @@
+ 	smp_read_barrier_depends(); /* Enforce dependency ordering from x */ \
+ 	__u.__val;							\
+ })
++#else
++
++#define __READ_ONCE(x, check)						\
++({									\
++	union { typeof(x) __val; char __c[1]; } __u = {0};			\
++	if (check)							\
++		__read_once_size(&(x), __u.__c, sizeof(x));		\
++	else								\
++		__read_once_size_nocheck(&(x), __u.__c, sizeof(x));	\
++	smp_read_barrier_depends(); /* Enforce dependency ordering from x */ \
++	__u.__val;							\
++})
++#endif
+ #define READ_ONCE(x) __READ_ONCE(x, 1)
+ 
+ /*
+diff -ur linux-4.14.41/include/linux/compiler_types.h restart/include/linux/compiler_types.h
+--- linux-4.14.41/include/linux/compiler_types.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/include/linux/compiler_types.h	2018-06-22 09:57:42.477879713 +0530
+@@ -263,7 +263,11 @@
+ 
+ /* Are two types/vars the same type (ignoring qualifiers)? */
+ #ifndef __same_type
++#ifndef __cplusplus
+ # define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))
++#else
++# define __same_type(a, b) (sizeof(a) ==  sizeof(b))
++#endif
+ #endif
+ 
+ /* Is this type a native word size -- useful for atomic operations */
+diff -ur linux-4.14.41/include/linux/cpumask.h restart/include/linux/cpumask.h
+--- linux-4.14.41/include/linux/cpumask.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/include/linux/cpumask.h	2018-06-22 09:57:42.477879713 +0530
+@@ -257,9 +257,9 @@
+  *
+  * After the loop, cpu is >= nr_cpu_ids.
+  */
+-#define for_each_cpu_and(cpu, mask, and)				\
++#define for_each_cpu_and(cpu, mask, and_var)				\
+ 	for ((cpu) = -1;						\
+-		(cpu) = cpumask_next_and((cpu), (mask), (and)),		\
++		(cpu) = cpumask_next_and((cpu), (mask), (and_var)),		\
+ 		(cpu) < nr_cpu_ids;)
+ #endif /* SMP */
+ 
+Only in restart/include/linux: customhash.h
+diff -ur linux-4.14.41/include/linux/linkage.h restart/include/linux/linkage.h
+--- linux-4.14.41/include/linux/linkage.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/include/linux/linkage.h	2018-06-22 09:57:42.845881256 +0530
+@@ -13,7 +13,13 @@
+ #endif
+ 
+ #ifdef __cplusplus
+-#define CPP_ASMLINKAGE extern "C"
++#define CPP_ASMLINKAGE 
++#ifdef __cplusplus
++extern "C" {
++#endif
++#ifdef __cplusplus
++}
++#endif
+ #else
+ #define CPP_ASMLINKAGE
+ #endif
+diff -ur linux-4.14.41/include/linux/module.h restart/include/linux/module.h
+--- linux-4.14.41/include/linux/module.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/include/linux/module.h	2018-06-22 11:27:53.550225244 +0530
+@@ -124,20 +124,66 @@
+ #define console_initcall(fn)		module_init(fn)
+ #define security_initcall(fn)		module_init(fn)
+ 
++#if defined(CONFIG_CXX_RUNTIME) && defined(__cplusplus)
++/* These are defined in lib/gcc/crtstuff.c */
++extern void begin_init(void);
++extern void end_init(void);
++extern void begin_fini(void);
++
++
++#define module_init(initfn)                                     \
++        int init_module(void)                                   \
++        {                                                       \
++                begin_init();                                   \
++                end_init();                                     \
++                return initfn();                                \
++        }
++
++#define module_exit(exitfn)                                     \
++#define module_exit(exitfn)                                     \
++        void cleanup_module(void)                               \
++        {                                                       \
++                exitfn();                                       \
++                begin_fini();                                   \
++        } 
++
++#else /* !CONFIG_CXX_RUNTIME || !__cplusplus */
++/* These macros create a dummy inline: gcc 2.9x does not count alias
++ * as usage, hence the `unused function' warning when __init functions
++ * are declared static. We use the dummy __*_module_inline functions
++ * both to kill the warning and check the type of the init/cleanup
++ * function. */
++
++/* Each module must use one module_init(), or one no_module_init */
++#define module_init(initfn)                                     \
++        static inline initcall_t __inittest(void)               \
++        { return initfn; }                                      \
++        int init_module(void) __attribute__((alias(#initfn)));
++
++/* This is only required if you want to be unloadable. */
++#define module_exit(exitfn)                                     \
++        static inline exitcall_t __exittest(void)               \
++        { return exitfn; }                                      \
++        void cleanup_module(void) __attribute__((alias(#exitfn)));
++#endif /* !CONFIG_CXX_RUNTIME || !__cplusplus */
++
++
++
+ /* Each module must use one module_init(). */
+-#define module_init(initfn)					\
++/*#define module_init(initfn)					\
+ 	static inline initcall_t __maybe_unused __inittest(void)		\
+ 	{ return initfn; }					\
+ 	int init_module(void) __attribute__((alias(#initfn)));
+-
++*/
+ /* This is only required if you want to be unloadable. */
+-#define module_exit(exitfn)					\
++/*#define module_exit(exitfn)					\
+ 	static inline exitcall_t __maybe_unused __exittest(void)		\
+ 	{ return exitfn; }					\
+ 	void cleanup_module(void) __attribute__((alias(#exitfn)));
+-
++*/
+ #endif
+ 
++
+ /* This means "can be init if no module support, otherwise module load
+    may call it." */
+ #ifdef CONFIG_MODULES
+diff -ur linux-4.14.41/include/linux/rcupdate.h restart/include/linux/rcupdate.h
+--- linux-4.14.41/include/linux/rcupdate.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/include/linux/rcupdate.h	2018-06-22 11:19:45.384514704 +0530
+@@ -337,31 +337,44 @@
+ #define rcu_dereference_sparse(p, space)
+ #endif /* #else #ifdef __CHECKER__ */
+ 
++#ifdef __cplusplus
++#define TYPEOF(x) typeof(x)
++#else
++#define TYPEOF(x) typeof(*(x)) *
++#endif
++
++
+ #define __rcu_access_pointer(p, space) \
+-({ \
+-	typeof(*p) *_________p1 = (typeof(*p) *__force)READ_ONCE(p); \
+-	rcu_dereference_sparse(p, space); \
+-	((typeof(*p) __force __kernel *)(_________p1)); \
+-})
++        ({ \
++                TYPEOF(p) _________p1 = (TYPEOF(p)__force )ACCESS_ONCE(p); \
++                rcu_dereference_sparse(p, space); \
++                ((TYPEOF(p) __force __kernel)(_________p1)); \
++        })
++
++
+ #define __rcu_dereference_check(p, c, space) \
+-({ \
+-	/* Dependency order vs. p above. */ \
+-	typeof(*p) *________p1 = (typeof(*p) *__force)READ_ONCE(p); \
+-	RCU_LOCKDEP_WARN(!(c), "suspicious rcu_dereference_check() usage"); \
+-	rcu_dereference_sparse(p, space); \
+-	((typeof(*p) __force __kernel *)(________p1)); \
+-})
++        ({ \
++	TYPEOF(p) ________p1 = (TYPEOF(p) __force)(p); \
++        RCU_LOCKDEP_WARN(!(c), "suspicious rcu_dereference_check() usage"); \
++        rcu_dereference_sparse(p, space); \
++        ((TYPEOF(p) __force __kernel )(________p1)); \
++        })
++
++
++
+ #define __rcu_dereference_protected(p, c, space) \
+ ({ \
+-	RCU_LOCKDEP_WARN(!(c), "suspicious rcu_dereference_protected() usage"); \
+-	rcu_dereference_sparse(p, space); \
+-	((typeof(*p) __force __kernel *)(p)); \
++        RCU_LOCKDEP_WARN(!(c), "suspicious rcu_dereference_protected() usage"); \
++        rcu_dereference_sparse(p, space); \
++        ((TYPEOF(p) __force __kernel )(p)); \
+ })
++
++
+ #define rcu_dereference_raw(p) \
+ ({ \
+ 	/* Dependency order vs. p above. */ \
+ 	typeof(p) ________p1 = READ_ONCE(p); \
+-	((typeof(*p) __force __kernel *)(________p1)); \
++	((TYPEOF(p) __force __kernel )(________p1)); \
+ })
+ 
+ /**
+@@ -401,6 +414,7 @@
+  * please be careful when making changes to rcu_assign_pointer() and the
+  * other macros that it invokes.
+  */
++
+ #define rcu_assign_pointer(p, v)					      \
+ ({									      \
+ 	uintptr_t _r_a_p__v = (uintptr_t)(v);				      \
+diff -ur linux-4.14.41/include/linux/rhashtable.h restart/include/linux/rhashtable.h
+--- linux-4.14.41/include/linux/rhashtable.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/include/linux/rhashtable.h	2018-06-22 09:57:43.041882078 +0530
+@@ -789,7 +789,7 @@
+ 		struct rhlist_head *list;
+ 
+ 		list = container_of(obj, struct rhlist_head, rhead);
+-		RCU_INIT_POINTER(list->next, NULL);
++		rcu_assign_pointer(list->next, NULL);
+ 	}
+ 
+ 	rcu_assign_pointer(*pprev, obj);
+diff -ur linux-4.14.41/include/linux/sched.h restart/include/linux/sched.h
+--- linux-4.14.41/include/linux/sched.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/include/linux/sched.h	2018-06-22 11:17:11.691971229 +0530
+@@ -177,7 +177,7 @@
+ extern long schedule_timeout_killable(long timeout);
+ extern long schedule_timeout_uninterruptible(long timeout);
+ extern long schedule_timeout_idle(long timeout);
+-asmlinkage void schedule(void);
++extern asmlinkage void schedule(void);
+ extern void schedule_preempt_disabled(void);
+ 
+ extern int __must_check io_schedule_prepare(void);
+@@ -1068,6 +1068,13 @@
+ 	/* Number of pages to reclaim on returning to userland: */
+ 	unsigned int			memcg_nr_pages_over_high;
+ #endif
++#ifdef CONFIG_CXX_RUNTIME
++        /* Copied from unwind-cxx.h */
++        struct {
++                void *caughtExceptions;
++                unsigned int uncaughtExceptions;
++        } cxa_eh_globals;
++#endif
+ 
+ #ifdef CONFIG_UPROBES
+ 	struct uprobe_task		*utask;
+diff -ur linux-4.14.41/include/linux/timer.h restart/include/linux/timer.h
+--- linux-4.14.41/include/linux/timer.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/include/linux/timer.h	2018-06-22 09:57:43.073882210 +0530
+@@ -7,6 +7,10 @@
+ #include <linux/stddef.h>
+ #include <linux/debugobjects.h>
+ #include <linux/stringify.h>
++#ifdef __cplusplus
++#include <linux/hrtimer.h>
++#endif
++
+ 
+ struct tvec_base;
+ 
+diff -ur linux-4.14.41/include/linux/types.h restart/include/linux/types.h
+--- linux-4.14.41/include/linux/types.h	2018-05-16 13:40:32.000000000 +0530
++++ restart/include/linux/types.h	2018-06-22 09:57:43.077882228 +0530
+@@ -26,8 +26,9 @@
+ typedef __kernel_timer_t	timer_t;
+ typedef __kernel_clockid_t	clockid_t;
+ typedef __kernel_mqd_t		mqd_t;
+-
++#ifndef __cplusplus
+ typedef _Bool			bool;
++#endif
+ 
+ typedef __kernel_uid32_t	uid_t;
+ typedef __kernel_gid32_t	gid_t;
+diff -ur linux-4.14.41/init/Kconfig restart/init/Kconfig
+--- linux-4.14.41/init/Kconfig	2018-05-16 13:40:32.000000000 +0530
++++ restart/init/Kconfig	2018-06-22 09:57:44.609888650 +0530
+@@ -1656,6 +1656,15 @@
+ config TRACEPOINTS
+ 	bool
+ 
++config CXX_RUNTIME
++        bool "C++ runtime support"
++        default y
++
++config CXX_RUNTIME_TEST
++        tristate "Tests for C++ runtime support"
++        depends on CXX_RUNTIME
++        default m
++
+ source "arch/Kconfig"
+ 
+ endmenu		# General setup
+Only in restart/lib: cxa_atexit.c
+Only in restart/lib: gcc
+Only in restart/lib: libstdc++-v3
+diff -ur linux-4.14.41/lib/Makefile restart/lib/Makefile
+--- linux-4.14.41/lib/Makefile	2018-05-16 13:40:32.000000000 +0530
++++ restart/lib/Makefile	2018-06-22 09:57:44.845889639 +0530
+@@ -168,6 +168,11 @@
+ 
+ obj-$(CONFIG_CPU_RMAP) += cpu_rmap.o
+ 
++obj-$(CONFIG_CXX_RUNTIME) += cxa_atexit.o
++obj-$(CONFIG_CXX_RUNTIME) += gcc/
++obj-$(CONFIG_CXX_RUNTIME) += libstdc++-v3/
++
++
+ obj-$(CONFIG_CORDIC) += cordic.o
+ 
+ obj-$(CONFIG_DQL) += dynamic_queue_limits.o
+diff -ur linux-4.14.41/Makefile restart/Makefile
+--- linux-4.14.41/Makefile	2018-05-16 13:40:32.000000000 +0530
++++ restart/Makefile	2018-06-22 09:57:36.097852954 +0530
+@@ -27,7 +27,7 @@
+ export LC_COLLATE LC_NUMERIC
+ 
+ # Avoid interference with shell env settings
+-unexport GREP_OPTIONS
++#unexport GREP_OPTIONS
+ 
+ # We are using a recursive build, so we need to do a little thinking
+ # to get the ordering right.
+@@ -376,8 +376,9 @@
+ 
+ # Make variables (CC, etc...)
+ AS		= $(CROSS_COMPILE)as
+-LD		= $(CROSS_COMPILE)ld
++LD		= $(CROSS_COMPILE)ld  -nostdlib -nodefaultlibs -nostartfiles
+ CC		= $(CROSS_COMPILE)gcc
++CXX		= $(CROSS_COMPILE)g++ $(KBUILD_CFLAGS) $(KBUILD_CXXFLAGS) -v
+ CPP		= $(CC) -E
+ AR		= $(CROSS_COMPILE)ar
+ NM		= $(CROSS_COMPILE)nm
+@@ -397,8 +398,8 @@
+ NOSTDINC_FLAGS  =
+ CFLAGS_MODULE   =
+ AFLAGS_MODULE   =
+-LDFLAGS_MODULE  =
+-CFLAGS_KERNEL	=
++LDFLAGS_MODULE  = -r
++CFLAGS_KERNEL	= -fno-tree-scev-cprop
+ AFLAGS_KERNEL	=
+ LDFLAGS_vmlinux =
+ 
+@@ -420,14 +421,30 @@
+ 		$(USERINCLUDE)
+ 
+ KBUILD_AFLAGS   := -D__ASSEMBLY__
+-KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+-		   -fno-strict-aliasing -fno-common -fshort-wchar \
+-		   -Werror-implicit-function-declaration \
+-		   -Wno-format-security \
+-		   -std=gnu89
++
+ KBUILD_CPPFLAGS := -D__KERNEL__
+ KBUILD_AFLAGS_KERNEL :=
+ KBUILD_CFLAGS_KERNEL :=
++KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
++		   -fno-strict-aliasing -fno-common \
++		   -Werror-implicit-function-declaration \
++		   -Wno-format-security \
++	           -fno-delete-null-pointer-checks \
++	           -lstdc++ 
++KBUILD_CXXFLAGS := -g -fno-strict-aliasing -fno-common \
++ 		   -fpermissive -w -ffreestanding \
++		   -nostdinc -fno-strict-aliasing -fno-common \
++		   -pipe -msoft-float -mregparm=3 -freg-struct-return \
++		   -mpreferred-stack-boundary=4 -lstdc++ \
++                   -mtune=generic -ffreestanding \
++		   -maccumulate-outgoing-args -fomit-frame-pointer \
++		   -fno-stack-protector -fno-tree-scev-cprop \
++		   -nostdinc++ -fexceptions -frtti -fno-strict-aliasing \
++                   -fno-common -fpermissive  -fno-tree-scev-cprop \
++	           -lstdc++
++
++
++
+ KBUILD_AFLAGS_MODULE  := -DMODULE
+ KBUILD_CFLAGS_MODULE  := -DMODULE
+ KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
+@@ -436,9 +453,10 @@
+ export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
+ export CPP AR NM STRIP OBJCOPY OBJDUMP HOSTLDFLAGS HOST_LOADLIBES
+ export MAKE AWK GENKSYMS INSTALLKERNEL PERL PYTHON UTS_MACHINE
+-export HOSTCXX HOSTCXXFLAGS LDFLAGS_MODULE CHECK CHECKFLAGS
++export HOSTCXX HOSTCXXFLAGS LDFLAGS_MODULE CHECK CHECKFLAGS CXX
+ 
+ export KBUILD_CPPFLAGS NOSTDINC_FLAGS LINUXINCLUDE OBJCOPYFLAGS LDFLAGS
++export KBUILD_CXXFLAGS NOSTDINCXX_FLAGS
+ export KBUILD_CFLAGS CFLAGS_KERNEL CFLAGS_MODULE
+ export CFLAGS_KASAN CFLAGS_KASAN_NOSANITIZE CFLAGS_UBSAN
+ export KBUILD_AFLAGS AFLAGS_KERNEL AFLAGS_MODULE
+@@ -651,11 +669,15 @@
+ ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+ KBUILD_CFLAGS	+= $(call cc-option,-Oz,-Os)
+ KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
++KBUILD_CFLAGS	+= -Os
++KBUILD_CXXFLAGS	+= -Os
+ else
+ ifdef CONFIG_PROFILE_ALL_BRANCHES
+ KBUILD_CFLAGS	+= -O2 $(call cc-disable-warning,maybe-uninitialized,)
++KBUILD_CXXFLAGS	+= -O2
+ else
+ KBUILD_CFLAGS   += -O2
++KBUILD_CXXFLAGS	+= -O2
+ endif
+ endif
+ 
+@@ -685,6 +707,7 @@
+ 
+ ifneq ($(CONFIG_FRAME_WARN),0)
+ KBUILD_CFLAGS += $(call cc-option,-Wframe-larger-than=${CONFIG_FRAME_WARN})
++KBUILD_CXXFLAGS += $(call cc-option,-Wframe-larger-than=${CONFIG_FRAME_WARN})
+ endif
+ 
+ # This selects the stack protector compiler flag. Testing it is delayed
+@@ -707,7 +730,13 @@
+   stackp-path := $(srctree)/scripts/gcc-$(SRCARCH)_$(BITS)-has-stack-protector.sh
+   stackp-check := $(wildcard $(stackp-path))
+ endif
+-KBUILD_CFLAGS += $(stackp-flag)
++
++# Force gcc to behave correct even for buggy distributions
++ifndef CONFIG_CC_STACKPROTECTOR
++KBUILD_CFLAGS += $(call cc-option, -fno-stack-protector)
++KBUILD_CXXFLAGS += $(call cc-option, -fno-stack-protector)
++endif
++
+ 
+ ifeq ($(cc-name),clang)
+ KBUILD_CPPFLAGS += $(call cc-option,-Qunused-arguments,)
+@@ -729,11 +758,13 @@
+ # These warnings generated too much noise in a regular build.
+ # Use make W=1 to enable them (see scripts/Makefile.extrawarn)
+ KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
+-KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
++KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
+ endif
++KBUILD_CXXFLAGS += $(call cc-disable-warning, unused-but-set-variable)
+ 
+ ifdef CONFIG_FRAME_POINTER
+ KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
++KBUILD_CXXFLAGS	+= -fno-omit-frame-pointer -fexceptions -frtti
+ else
+ # Some targets (ARM with Thumb2, for example), can't be built with frame
+ # pointers.  For those, we don't have FUNCTION_TRACER automatically
+@@ -742,6 +773,7 @@
+ # -fomit-frame-pointer with FUNCTION_TRACER.
+ ifndef CONFIG_FUNCTION_TRACER
+ KBUILD_CFLAGS	+= -fomit-frame-pointer
++KBUILD_CXXFLAGS	+= -fomit-frame-pointer
+ endif
+ endif
+ 
+@@ -754,7 +786,33 @@
+ KBUILD_CFLAGS	+= -g
+ endif
+ KBUILD_AFLAGS	+= -Wa,-gdwarf-2
++KBUILD_CXXFLAGS += -g
++KBUILD_AFLAGS	+= -gdwarf-2
+ endif
++
++ifdef CONFIG_CXX_RUNTIME
++KBUILD_CXXFLAGS  += -Iinclude1 -I$(srctree)/include/c++ -I$(objtree)/include/c++ \
++	-fexceptions -frtti -I$(srctree)/arch/$(hdr-arch)/include \
++                -I$(objtree)/arch/$(hdr-arch)/include/generated \
++                $(if $(KBUILD_SRC), -I$(srctree)/include) \
++                -I$(objtree)/include \
++                $(USERINCLUDE)
++ 
++#KBUILD_CFLAGS += -lstdc++
++#HOSTCFLAGS += -lstdc++
++else
++KBUILD_CXXFLAGS  += -I$(srctree)/include/c++ -fno-exceptions -fno-rtti
++
++
++
++
++
++
++endif
++
++
++
++
+ ifdef CONFIG_DEBUG_INFO_DWARF4
+ KBUILD_CFLAGS	+= $(call cc-option, -gdwarf-4,)
+ endif
+@@ -762,6 +820,9 @@
+ ifdef CONFIG_DEBUG_INFO_REDUCED
+ KBUILD_CFLAGS 	+= $(call cc-option, -femit-struct-debug-baseonly) \
+ 		   $(call cc-option,-fno-var-tracking)
++KBUILD_CFLAGS 	+= $(call cc-option, -femit-struct-debug-baseonly)
++KBUILD_CXXFLAGS	+= $(call cc-option, -femit-struct-debug-baseonly)
++
+ endif
+ 
+ ifdef CONFIG_FUNCTION_TRACER
+@@ -774,6 +835,9 @@
+ endif
+ KBUILD_CFLAGS	+= $(CC_FLAGS_FTRACE) $(CC_USING_FENTRY)
+ KBUILD_AFLAGS	+= $(CC_USING_FENTRY)
++KBUILD_CFLAGS	+= -pg
++KBUILD_CXXFLAGS	+= -pg
++
+ ifdef CONFIG_DYNAMIC_FTRACE
+ 	ifdef CONFIG_HAVE_C_RECORDMCOUNT
+ 		BUILD_C_RECORDMCOUNT := y
+@@ -795,6 +859,9 @@
+ # arch Makefile may override CC so keep this after arch Makefile is included
+ NOSTDINC_FLAGS += -nostdinc -isystem $(shell $(CC) -print-file-name=include)
+ CHECKFLAGS     += $(NOSTDINC_FLAGS)
++NOSTDINCXX_FLAGS = $(NOSTDINC_FLAGS) -nostdinc++ -fexceptions -frtti -Iinclude2 -I$(srctree)/include/c++ -fno-strict-aliasing -fno-common \
++ 		  -fpermissive -w -Iinclude2 -I$(srctree)/arch/$(SRCARCH)/include -Iinclude2 -I$(srctree)/include
++
+ 
+ # warn about C99 declaration after statement
+ KBUILD_CFLAGS += $(call cc-option,-Wdeclaration-after-statement,)
+@@ -820,7 +887,7 @@
+ # conserve stack if available
+ KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
+ 
+-# disallow errors like 'EXPORT_GPL(foo);' with missing header
++#llow errors like 'EXPORT_GPL(foo);' with missing header
+ KBUILD_CFLAGS   += $(call cc-option,-Werror=implicit-int)
+ 
+ # require functions to have arguments in prototypes, not empty 'int foo()'
+@@ -828,9 +895,8 @@
+ 
+ # Prohibit date/time macros, which would make the build non-deterministic
+ KBUILD_CFLAGS   += $(call cc-option,-Werror=date-time)
+-
+ # enforce correct pointer usage
+-KBUILD_CFLAGS   += $(call cc-option,-Werror=incompatible-pointer-types)
++#KBUILD_CFLAGS   += $(call cc-option,-Werror=incompatible-pointer-types)
+ 
+ # Require designated initializers for all marked structures
+ KBUILD_CFLAGS   += $(call cc-option,-Werror=designated-init)
+@@ -847,6 +913,9 @@
+ KBUILD_CPPFLAGS += $(ARCH_CPPFLAGS) $(KCPPFLAGS)
+ KBUILD_AFLAGS   += $(ARCH_AFLAGS)   $(KAFLAGS)
+ KBUILD_CFLAGS   += $(ARCH_CFLAGS)   $(KCFLAGS)
++CFLAGS = $(KBUILD_CFLAGS)
++#export CFLAGS
++
+ 
+ # Use --build-id when available.
+ LDFLAGS_BUILD_ID := $(patsubst -Wl$(comma)%,%,\
+@@ -922,18 +991,6 @@
+ endif # CONFIG_MODULE_COMPRESS
+ export mod_compress_cmd
+ 
+-# Select initial ramdisk compression format, default is gzip(1).
+-# This shall be used by the dracut(8) tool while creating an initramfs image.
+-#
+-INITRD_COMPRESS-y                  := gzip
+-INITRD_COMPRESS-$(CONFIG_RD_BZIP2) := bzip2
+-INITRD_COMPRESS-$(CONFIG_RD_LZMA)  := lzma
+-INITRD_COMPRESS-$(CONFIG_RD_XZ)    := xz
+-INITRD_COMPRESS-$(CONFIG_RD_LZO)   := lzo
+-INITRD_COMPRESS-$(CONFIG_RD_LZ4)   := lz4
+-# do not export INITRD_COMPRESS, since we didn't actually
+-# choose a sane default compression above.
+-# export INITRD_COMPRESS := $(INITRD_COMPRESS-y)
+ 
+ ifdef CONFIG_MODULE_SIG_ALL
+ $(eval $(call config_filename,MODULE_SIG_KEY))
+@@ -979,6 +1036,36 @@
+ libs-y2		:= $(filter-out %.a, $(patsubst %/, %/built-in.o, $(libs-y)))
+ virt-y		:= $(patsubst %/, %/built-in.o, $(virt-y))
+ 
++ifdef CONFIG_CXX_RUNTIME
++crtobj		:= $(objtree)/lib/gcc
++
++crtbegin.o	:= $(crtobj)/crtbegin.o
++crtend.o	:= $(crtobj)/crtend.o
++ifdef CONFIG_MODULES
++crtbeginM.o	:= $(crtobj)/crtbeginM.o
++crtendM.o	:= $(crtobj)/crtendM.o
++
++export crtbeginM.o crtendM.o
++endif
++
++crtobjects	:= $(crtbegin.o) $(crtend.o) $(crtbeginM.o) $(crtendM.o)
++
++$(crtobjects): $(srctree)/lib/gcc/crtstuff.c
++	$(Q)$(MAKE) $(build)=$(crtobj) build_crt=1 $@
++endif
++
++libsupcxx_headers	:= cxxabi.h exception exception_defines.h new typeinfo
++
++cxx_headers	:= $(patsubst %,include/c++/%,$(libsupcxx_headers))
++
++$(cxx_headers):
++	$(Q)set -e; \
++	if [ ! -d include/c++ ]; then mkdir -p include/c++; fi; \
++	ln -fsn $(srctree)/lib/libstdc++-v3/libsupc++/$(@F) $@
++
++
++
++
+ # Externally visible symbols (used by link-vmlinux.sh)
+ export KBUILD_VMLINUX_INIT := $(head-y) $(init-y)
+ export KBUILD_VMLINUX_MAIN := $(core-y) $(libs-y2) $(drivers-y) $(net-y) $(virt-y)
+@@ -1079,13 +1166,22 @@
+                    include/config/auto.conf
+ 	$(cmd_crmodverdir)
+ 
++#archprepare: archheaders archscripts prepare1 scripts_basic
++ifneq ($(KBUILD_MODULES),)
++	$(Q)mkdir -p $(MODVERDIR)
++	$(Q)rm -f $(MODVERDIR)/*
++endif
++prepare-crt: prepare1 $(crtobjects) $(cxx_headers)
+ archprepare: archheaders archscripts prepare1 scripts_basic
++#prepare-crt in above line is moved to prepare
++
+ 
+ prepare0: archprepare gcc-plugins
+ 	$(Q)$(MAKE) $(build)=.
+ 
+ # All the preparing..
+-prepare: prepare0 prepare-objtool
++#prepare: prepare0 prepare-objtool
++prepare: prepare0 prepare-objtool prepare-crt
+ 
+ # Support for using generic headers in asm-generic
+ PHONY += asm-generic uapi-asm-generic
+@@ -1742,3 +1838,5 @@
+ # Declare the contents of the .PHONY variable as phony.  We keep that
+ # information in a variable so we can use it in if_changed and friends.
+ .PHONY: $(PHONY)
++.NOTPARALLEL: prepare3 prepare2 prepare1 prepare0 prepare-crt archprepare
++
+diff -ur linux-4.14.41/scripts/link-vmlinux.sh restart/scripts/link-vmlinux.sh
+--- linux-4.14.41/scripts/link-vmlinux.sh	2018-05-16 13:40:32.000000000 +0530
++++ restart/scripts/link-vmlinux.sh	2018-06-22 10:28:36.620963057 +0530
+@@ -101,16 +101,21 @@
+ 				built-in.o				\
+ 				--no-whole-archive			\
+ 				--start-group				\
++				lib/gcc/crtbegin.o                      \
+ 				${KBUILD_VMLINUX_LIBS}			\
+ 				--end-group				\
+-				${1}"
++				${1}                                    \
++				lib/gcc/crtend.o"
+ 		else
+ 			objects="${KBUILD_VMLINUX_INIT}			\
++                                lib/gcc/crtbegin.o                      \
+ 				--start-group				\
+ 				${KBUILD_VMLINUX_MAIN}			\
+ 				${KBUILD_VMLINUX_LIBS}			\
+ 				--end-group				\
+-				${1}"
++				${1}                                    \
++                                lib/gcc/crtend.o"
++
+ 		fi
+ 
+ 		${LD} ${LDFLAGS} ${LDFLAGS_vmlinux} -o ${2}		\
+diff -ur linux-4.14.41/scripts/Makefile.build restart/scripts/Makefile.build
+--- linux-4.14.41/scripts/Makefile.build	2018-05-16 13:40:32.000000000 +0530
++++ restart/scripts/Makefile.build	2018-06-22 09:57:46.473896464 +0530
+@@ -160,6 +160,10 @@
+ $(obj)/%.i: $(src)/%.c FORCE
+ 	$(call if_changed_dep,cpp_i_c)
+ 
++$(obj)/%.s: $(src)/%.cc FORCE
++       $(call if_changed_dep,cxx_s_c)
++
++
+ # These mirror gensymtypes_S and co below, keep them in synch.
+ cmd_gensymtypes_c =                                                         \
+     $(CPP) -D__GENKSYMS__ $(c_flags) $< |                                   \
+@@ -191,9 +195,12 @@
+ # (See cmd_cc_o_c + relevant part of rule_cc_o_c)
+ 
+ quiet_cmd_cc_o_c = CC $(quiet_modtag)  $@
++quiet_cmd_cxx_o_cc = CC $(quiet_modtag)  $@
++
+ 
+ ifndef CONFIG_MODVERSIONS
+ cmd_cc_o_c = $(CC) $(c_flags) -c -o $@ $<
++cmd_cxx_o_cc = $(CXX) $(cxx_flags) -c -o $@ $<
+ 
+ else
+ # When module versioning is enabled the following steps are executed:
+@@ -221,8 +228,31 @@
+ 	else									\
+ 		mv -f $(@D)/.tmp_$(@F) $@;					\
+ 	fi;
++
++
++cmd_cxx_o_cc = $(CXX) $(cxx_flags) -c -o $(@D)/.tmp_$(@F) $<
++
++cmd_modversions =                                                              \
++       if $(OBJDUMP) -h $(@D)/.tmp_$(@F) | grep -q __ksymtab; then             \
++               $(CPP) -D__GENKSYMS__ $(c_flags) $<                     \
++               | $(GENKSYMS) $(if $(KBUILD_SYMTYPES),                  \
++                                       -T $(@D)/$(@F:.o=.symtypes)) -a $(ARCH)   \
++                > $(@D)/.tmp_$(@F:.o=.ver);                             \
++                                                                        \
++                $(LD) $(LDFLAGS) -r -o $@ $(@D)/.tmp_$(@F)              \
++                        -T $(@D)/.tmp_$(@F:.o=.ver);                    \
++                rm -f $(@D)/.tmp_$(@F) $(@D)/.tmp_$(@F:.o=.ver);        \
++        else                                                            \
++                mv -f $(@D)/.tmp_$(@F) $@;                              \
++        fi;
++
++
++
++
+ endif
+ 
++
++
+ ifdef CONFIG_FTRACE_MCOUNT_RECORD
+ ifdef BUILD_C_RECORDMCOUNT
+ ifeq ("$(origin RECORDMCOUNT_WARN)", "command line")
+@@ -310,6 +340,19 @@
+ 	$(call echo-cmd,record_mcount) $(cmd_record_mcount)
+ endef
+ 
++define rule_cxx_o_cc
++       $(call echo-cmd,checksrc) $(cmd_checksrc)                       \
++       $(call echo-cmd,cxx_o_cc) $(cmd_cxx_o_cc);                      \
++#       $(call cmd_and_fixdep,cxx_o_cc)					  \
++       $(call echo-cmd,objtool) $(cmd_objtool)				  \
++       $(cmd_modversions)                                              
++       scripts/basic/fixdep $(depfile) $@ '$(cmd_cxx_o_cc)' >          \
++       $(dot-target).tmp;  \
++      rm -f $(depfile);                                               \
++       mv -f $(dot-target).tmp $(dot-target).cmd
++endef
++
++
+ define rule_as_o_S
+ 	$(call cmd_and_fixdep,as_o_S)					  \
+ 	$(call echo-cmd,objtool) $(cmd_objtool)				  \
+@@ -328,6 +371,11 @@
+ 	$(call cmd,force_checksrc)
+ 	$(call if_changed_rule,cc_o_c)
+ 
++$(obj)/%.o: $(src)/%.cc $(recordmcount_source) $(objtool_dep) FORCE
++	$(call cmd,force_checksrc)
++	$(call if_changed_rule,cxx_o_cc)
++
++
+ # Single-part modules are special since we need to mark them in $(MODVERDIR)
+ 
+ $(single-used-m): $(obj)/%.o: $(src)/%.c $(recordmcount_source) $(objtool_dep) FORCE
+@@ -340,6 +388,15 @@
+       cmd_cc_lst_c = $(CC) $(c_flags) -g -c -o $*.o $< && \
+ 		     $(CONFIG_SHELL) $(srctree)/scripts/makelst $*.o \
+ 				     System.map $(OBJDUMP) > $@
++quiet_cmd_cxx_lst_cc = MKLST   $@
++       cmd_cxx_lst_cc = $(CXX) $(cxx_flags) -g -c -o $*.o $< && \
++       $(CONFIG_SHELL) $(srctree)/scripts/makelst $*.o \
++       System.map $(OBJDUMP) > $@
++$(obj)/%.lst: $(src)/%.cc FORCE
++	$(call if_changed_dep,cxx_lst_cc)
++
++
++
+ 
+ $(obj)/%.lst: $(src)/%.c FORCE
+ 	$(call if_changed_dep,cc_lst_c)
+@@ -564,7 +621,11 @@
+ endif
+ 
+ quiet_cmd_link_multi-m = LD [M]  $@
+-cmd_link_multi-m = $(cmd_link_multi-link)
++#cmd_link_multi-m = $(cmd_link_multi-link)
++
++cmd_link_multi-m =  $(LD) $(ld_flags) $(LDFLAGS_MODULE) -o $@ \
++        $(crtbeginM.o) $(link_multi_deps) $(crtendM.o)  
++
+ 
+ $(multi-used-y): FORCE
+ 	$(call if_changed,link_multi-y)
+diff -ur linux-4.14.41/scripts/Makefile.lib restart/scripts/Makefile.lib
+--- linux-4.14.41/scripts/Makefile.lib	2018-05-16 13:40:32.000000000 +0530
++++ restart/scripts/Makefile.lib	2018-06-22 09:57:46.473896464 +0530
+@@ -104,6 +104,9 @@
+ 
+ orig_c_flags   = $(KBUILD_CPPFLAGS) $(KBUILD_CFLAGS) $(KBUILD_SUBDIR_CCFLAGS) \
+                  $(ccflags-y) $(CFLAGS_$(basetarget).o)
++           
++_cxx_flags     = $(KBUILD_CXXFLAGS) $(EXTRA_CXXFLAGS) $(KBUILD_CXXFLAGS_$(*F).o) $(KBUILD_CXXFLAGS_$(basetarget).o)
++
+ _c_flags       = $(filter-out $(CFLAGS_REMOVE_$(basetarget).o), $(orig_c_flags))
+ orig_a_flags   = $(KBUILD_CPPFLAGS) $(KBUILD_AFLAGS) $(KBUILD_SUBDIR_ASFLAGS) \
+                  $(asflags-y) $(AFLAGS_$(basetarget).o)
+@@ -157,14 +160,22 @@
+ #   and locates generated .h files
+ # FIXME: Replace both with specific CFLAGS* statements in the makefiles
+ __c_flags	= $(if $(obj),$(call addtree,-I$(src)) -I$(obj)) \
+-		  $(call flags,_c_flags)
++                  $(call flags,_c_flags)
++__cxx_flags     = $(call addtree,-I$(obj)) $(call flags,_cxx_flags)
++
++           
+ __a_flags	= $(call flags,_a_flags)
+ __cpp_flags     = $(call flags,_cpp_flags)
+ endif
+ 
+ c_flags        = -Wp,-MD,$(depfile) $(NOSTDINC_FLAGS) $(LINUXINCLUDE)     \
+ 		 $(__c_flags) $(modkern_cflags)                           \
+-		 $(basename_flags) $(modname_flags)
++                 $(basename_flags) $(modname_flags)
++cxx_flags      = -Wp,-MD,$(depfile) $(NOSTDINCXX_FLAGS) $(KBUILD_CPPFLAGS) \
++     $(__cxx_flags) $(modkern_cflags) \
++     $(basename_flags) $(modname_flags)
++
++
+ 
+ a_flags        = -Wp,-MD,$(depfile) $(NOSTDINC_FLAGS) $(LINUXINCLUDE)     \
+ 		 $(__a_flags) $(modkern_aflags)
+Only in restart/tools/objtool/arch/x86/lib: inat-tables.c
+Only in restart/tools/objtool: fixdep
+Only in restart/tools/objtool: objtool
+Only in linux-4.14.41/tools/power/acpi: tools
