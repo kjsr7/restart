@@ -101,16 +101,21 @@ vmlinux_link()
 				built-in.o				\
 				--no-whole-archive			\
 				--start-group				\
+				lib/gcc/crtbegin.o                      \
 				${KBUILD_VMLINUX_LIBS}			\
 				--end-group				\
-				${1}"
+				${1}                                    \
+				lib/gcc/crtend.o"
 		else
 			objects="${KBUILD_VMLINUX_INIT}			\
+                                lib/gcc/crtbegin.o                      \
 				--start-group				\
 				${KBUILD_VMLINUX_MAIN}			\
 				${KBUILD_VMLINUX_LIBS}			\
 				--end-group				\
-				${1}"
+				${1}                                    \
+                                lib/gcc/crtend.o"
+
 		fi
 
 		${LD} ${LDFLAGS} ${LDFLAGS_vmlinux} -o ${2}		\
