@@ -325,10 +325,7 @@ static inline pudval_t native_pud_val(pud_t pud)
 
 static inline pud_t native_make_pud(pudval_t val)
 {
-//	return (pud_t) { .p4d.pgd = native_make_pgd(val) };
-pud_t a;
-a.p4d.pgd = native_make_pgd(val);
-return a;
+	return (pud_t) { .p4d.pgd = native_make_pgd(val) };
 }
 
 static inline pudval_t native_pud_val(pud_t pud)
@@ -354,10 +351,7 @@ static inline pmdval_t native_pmd_val(pmd_t pmd)
 
 static inline pmd_t native_make_pmd(pmdval_t val)
 {
-//	return (pmd_t) { .pud.p4d.pgd = native_make_pgd(val) };
-pmd_t a;
-a.pud.p4d.pgd = native_make_pgd(val);
-return a;
+	return (pmd_t) { .pud.p4d.pgd = native_make_pgd(val) };
 }
 
 static inline pmdval_t native_pmd_val(pmd_t pmd)
