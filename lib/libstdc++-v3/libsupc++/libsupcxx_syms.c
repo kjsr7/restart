@@ -40,7 +40,7 @@ EXPORT(_ZTIm);
 EXPORT(_ZTIx);
 EXPORT(_ZTIy);
 
-//EXPORT(_Znwj);
-//EXPORT(_Znaj);
+EXPORT(_Znwj);
+EXPORT(_Znaj);
 EXPORT(_ZdlPv);
 EXPORT(_ZdaPv);
