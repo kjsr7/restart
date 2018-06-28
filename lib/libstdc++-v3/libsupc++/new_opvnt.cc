@@ -29,6 +29,10 @@
 // the GNU General Public License.
 
 #include "new"
+//void* operator new(std::size_t, const std::nothrow_t&) throw();
+//void* operator new[](std::size_t, const std::nothrow_t&) throw();
+//inline void* operator new(std::size_t, void* __p) throw() { return __p; }
+//inline void* operator new[](std::size_t, void* __p) throw() { return __p; }
 
 void *
 operator new[] (std::size_t sz, const std::nothrow_t& nothrow) throw()

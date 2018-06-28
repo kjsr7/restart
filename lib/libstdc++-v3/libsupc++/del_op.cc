@@ -29,7 +29,7 @@
 // the GNU General Public License.
 
 
-#include "new"
+#include <new>
 #include "../../gcc/fixdefines.h"
 
 

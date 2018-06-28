@@ -30,6 +30,9 @@
 
 #include "new"
 
+void* operator new(std::size_t) throw (std::bad_alloc);
+void* operator new[](std::size_t) throw (std::bad_alloc);
+
 void *
 operator new[] (std::size_t sz) throw (std::bad_alloc)
 {

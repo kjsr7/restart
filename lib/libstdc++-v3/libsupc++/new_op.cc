@@ -36,10 +36,10 @@ using std::new_handler;
 using std::bad_alloc;
 using std::malloc;
 
+void* operator new(std::size_t) throw (std::bad_alloc);
+void* operator new[](std::size_t) throw (std::bad_alloc);
 extern new_handler __new_handler;
-
-void *
-operator new (std::size_t sz) throw (std::bad_alloc)
+void  * operator new (std::size_t sz) throw (std::bad_alloc)
 {
   void *p;
 
