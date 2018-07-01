@@ -341,15 +341,13 @@ define rule_cc_o_c
 endef
 
 define rule_cxx_o_cc
-       $(call echo-cmd,checksrc) $(cmd_checksrc)                       \
-       $(call echo-cmd,cxx_o_cc) $(cmd_cxx_o_cc);                      \
-#       $(call cmd_and_fixdep,cxx_o_cc)					  \
-       $(call echo-cmd,objtool) $(cmd_objtool)				  \
-       $(cmd_modversions)                                              
-       scripts/basic/fixdep $(depfile) $@ '$(cmd_cxx_o_cc)' >          \
-       $(dot-target).tmp;  \
-      rm -f $(depfile);                                               \
-       mv -f $(dot-target).tmp $(dot-target).cmd
+        $(call echo-cmd,checksrc) $(cmd_checksrc)                       \
+        $(call echo-cmd,cxx_o_cc) $(cmd_cxx_o_cc);                      \
+        $(cmd_modversions)                                              \
+        scripts/basic/fixdep $(depfile) $@ '$(cmd_cxx_o_cc)' >          \
+        $(dot-target).tmp;  \
+        rm -f $(depfile);                                               \
+        mv -f $(dot-target).tmp $(dot-target).cmd
 endef
 
 
@@ -378,9 +376,9 @@ $(obj)/%.o: $(src)/%.cc $(recordmcount_source) $(objtool_dep) FORCE
 
 # Single-part modules are special since we need to mark them in $(MODVERDIR)
 
-$(single-used-m): $(obj)/%.o: $(src)/%.cc $(recordmcount_source) $(objtool_dep) FORCE
+$(single-used-m): $(obj)/%.o: $(src)/%.c $(recordmcount_source) $(objtool_dep) FORCE
 	$(call cmd,force_checksrc)
-	$(call if_changed_rule,cxx_o_cc)
+	$(call if_changed_rule,cc_o_c)
 	@{ echo $(@:.o=.ko); echo $@; \
 	   $(cmd_undef_syms); } > $(MODVERDIR)/$(@F:.o=.mod)
 
