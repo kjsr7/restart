@@ -140,7 +140,6 @@ extern void begin_fini(void);
         }
 
 #define module_exit(exitfn)                                     \
-#define module_exit(exitfn)                                     \
         void cleanup_module(void)                               \
         {                                                       \
                 exitfn();                                       \
