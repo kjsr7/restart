@@ -68,7 +68,7 @@ struct latch_tree_ops {
 static __always_inline struct latch_tree_node *
 __lt_from_rb(struct rb_node *node, int idx)
 {
-	return container_of(node, struct latch_tree_node, node[idx]);
+	return container_of(node, struct latch_tree_node, node[0]);
 }
 
 static __always_inline void

@@ -136,11 +136,12 @@ DECLARE_STATIC_KEY_FALSE(mcsafe_key);
 static __always_inline __must_check int
 memcpy_mcsafe(void *dst, const void *src, size_t cnt)
 {
-	
+#ifndef __cplusplus	
 #ifdef CONFIG_X86_MCE
 	if (static_branch_unlikely(&mcsafe_key))
 		return memcpy_mcsafe_unrolled(dst, src, cnt);
 	else
+#endif
 #endif
 
 		memcpy(dst, src, cnt);

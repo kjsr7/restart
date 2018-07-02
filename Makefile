@@ -376,7 +376,7 @@ endif
 
 # Make variables (CC, etc...)
 AS		= $(CROSS_COMPILE)as
-LD		= $(CROSS_COMPILE)ld  -nostdlib -nodefaultlibs -nostartfiles
+LD		= $(CROSS_COMPILE)ld  -nostdlib 
 CC		= $(CROSS_COMPILE)gcc
 CXX		= $(CROSS_COMPILE)g++ $(KBUILD_CFLAGS) $(KBUILD_CXXFLAGS) -v
 CPP		= $(CC) -E
@@ -429,8 +429,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
-	           -fno-delete-null-pointer-checks \
-	           -lstdc++ 
+	           -fno-delete-null-pointer-checks 
 KBUILD_CXXFLAGS := -g -fno-strict-aliasing -fno-common \
  		   -fpermissive -w -ffreestanding \
 		   -nostdinc -fno-strict-aliasing -fno-common \
@@ -440,8 +439,7 @@ KBUILD_CXXFLAGS := -g -fno-strict-aliasing -fno-common \
 		   -maccumulate-outgoing-args -fomit-frame-pointer \
 		   -fno-stack-protector -fno-tree-scev-cprop \
 		   -nostdinc++ -fexceptions -frtti -fno-strict-aliasing \
-                   -fno-common -fpermissive  -fno-tree-scev-cprop \
-	           -lstdc++
+                   -fno-common -fpermissive  -fno-tree-scev-cprop 
 
 
 
@@ -896,7 +894,7 @@ KBUILD_CFLAGS   += $(call cc-option,-Werror=strict-prototypes)
 # Prohibit date/time macros, which would make the build non-deterministic
 KBUILD_CFLAGS   += $(call cc-option,-Werror=date-time)
 # enforce correct pointer usage
-#KBUILD_CFLAGS   += $(call cc-option,-Werror=incompatible-pointer-types)
+KBUILD_CFLAGS   += $(call cc-option,-Werror=incompatible-pointer-types)
 
 # Require designated initializers for all marked structures
 KBUILD_CFLAGS   += $(call cc-option,-Werror=designated-init)

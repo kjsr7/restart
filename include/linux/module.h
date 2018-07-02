@@ -166,20 +166,19 @@ extern void begin_fini(void);
         void cleanup_module(void) __attribute__((alias(#exitfn)));
 #endif /* !CONFIG_CXX_RUNTIME || !__cplusplus */
 
+/* Each module must use one module_init(), or one no_module_init */
+#define module_init(initfn)                                     \
+        static inline initcall_t __inittest(void)               \
+        { return initfn; }                                      \
+        int init_module(void) __attribute__((alias(#initfn)));
 
-
-/* Each module must use one module_init(). */
-/*#define module_init(initfn)					\
-	static inline initcall_t __maybe_unused __inittest(void)		\
-	{ return initfn; }					\
-	int init_module(void) __attribute__((alias(#initfn)));
-*/
 /* This is only required if you want to be unloadable. */
-/*#define module_exit(exitfn)					\
-	static inline exitcall_t __maybe_unused __exittest(void)		\
-	{ return exitfn; }					\
-	void cleanup_module(void) __attribute__((alias(#exitfn)));
-*/
+#define module_exit(exitfn)                                     \
+        static inline exitcall_t __exittest(void)               \
+        { return exitfn; }                                      \
+        void cleanup_module(void) __attribute__((alias(#exitfn)));
+
+
 #endif
 
 
