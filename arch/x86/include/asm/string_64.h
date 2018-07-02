@@ -143,7 +143,6 @@ memcpy_mcsafe(void *dst, const void *src, size_t cnt)
 	else
 #endif
 #endif
-
 		memcpy(dst, src, cnt);
 	return 0;
 }

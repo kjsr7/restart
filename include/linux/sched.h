@@ -168,7 +168,7 @@ struct task_group;
 
 extern cpumask_var_t			cpu_isolated_map;
 
-extern void scheduler_tick(void);
+void scheduler_tick(void);
 
 #define	MAX_SCHEDULE_TIMEOUT		LONG_MAX
 

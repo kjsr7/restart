@@ -27,7 +27,7 @@
 
 enum symbol_type {
 	SYM_NORMAL, SYM_TYPEDEF, SYM_ENUM, SYM_STRUCT, SYM_UNION,
-	SYM_ENUM_CONST
+	SYM_ENUM_CONST, SYM_CLASS /* SYM_CLASS added by RM */
 };
 
 enum symbol_status {
@@ -75,7 +75,7 @@ struct string_list *copy_list_range(struct string_list *start,
 int yylex(void);
 int yyparse(void);
 
-void error_with_pos(const char *, ...) __attribute__ ((format(printf, 1, 2)));
+void error_with_pos(const char *, ...);
 
 /*----------------------------------------------------------------------*/
 #define xmalloc(size) ({ void *__ptr = malloc(size);		\

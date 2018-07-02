@@ -27,7 +27,7 @@ LC_NUMERIC=C
 export LC_COLLATE LC_NUMERIC
 
 # Avoid interference with shell env settings
-#unexport GREP_OPTIONS
+unexport GREP_OPTIONS
 
 # We are using a recursive build, so we need to do a little thinking
 # to get the ordering right.
@@ -756,7 +756,7 @@ else
 # These warnings generated too much noise in a regular build.
 # Use make W=1 to enable them (see scripts/Makefile.extrawarn)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
-KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
+KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
 endif
 KBUILD_CXXFLAGS += $(call cc-disable-warning, unused-but-set-variable)
 
@@ -885,7 +885,7 @@ KBUILD_CFLAGS  += $(call cc-option,-fno-stack-check,)
 # conserve stack if available
 KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
 
-#llow errors like 'EXPORT_GPL(foo);' with missing header
+# disallow errors like 'EXPORT_GPL(foo);' with missing header
 KBUILD_CFLAGS   += $(call cc-option,-Werror=implicit-int)
 
 # require functions to have arguments in prototypes, not empty 'int foo()'
@@ -988,6 +988,19 @@ ifdef CONFIG_MODULE_COMPRESS
   endif # CONFIG_MODULE_COMPRESS_XZ
 endif # CONFIG_MODULE_COMPRESS
 export mod_compress_cmd
+
+# Select initial ramdisk compression format, default is gzip(1).
+# This shall be used by the dracut(8) tool while creating an initramfs image.
+#
+INITRD_COMPRESS-y                  := gzip
+INITRD_COMPRESS-$(CONFIG_RD_BZIP2) := bzip2
+INITRD_COMPRESS-$(CONFIG_RD_LZMA)  := lzma
+INITRD_COMPRESS-$(CONFIG_RD_XZ)    := xz
+INITRD_COMPRESS-$(CONFIG_RD_LZO)   := lzo
+INITRD_COMPRESS-$(CONFIG_RD_LZ4)   := lz4
+# do not export INITRD_COMPRESS, since we didn't actually
+# choose a sane default compression above.
+# export INITRD_COMPRESS := $(INITRD_COMPRESS-y)
 
 
 ifdef CONFIG_MODULE_SIG_ALL

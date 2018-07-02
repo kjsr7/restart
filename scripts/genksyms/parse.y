@@ -77,6 +77,7 @@ static void record_compound(struct string_list **keyw,
 %token AUTO_KEYW
 %token BOOL_KEYW
 %token CHAR_KEYW
+%token CLASS_KEYW       /* Added by RM */
 %token CONST_KEYW
 %token DOUBLE_KEYW
 %token ENUM_KEYW
@@ -88,6 +89,7 @@ static void record_compound(struct string_list **keyw,
 %token LONG_KEYW
 %token REGISTER_KEYW
 %token RESTRICT_KEYW
+%token SCOPERES             /* Added by RM */
 %token SHORT_KEYW
 %token SIGNED_KEYW
 %token STATIC_KEYW
@@ -98,7 +100,6 @@ static void record_compound(struct string_list **keyw,
 %token VOID_KEYW
 %token VOLATILE_KEYW
 %token TYPEOF_KEYW
-%token VA_LIST_KEYW
 
 %token EXPORT_SYMBOL_KEYW
 
@@ -118,6 +119,12 @@ static void record_compound(struct string_list **keyw,
 %token TYPE
 %token OTHER
 %token FILENAME
+
+/* added by RM */
+%token ACCESS_SPEC_KEYW  /* for private, public,protected */
+%token VIRTUAL_KEYW
+%token FRIEND_KEYW
+%token WCHAR_KEYW
 
 %%
 
@@ -239,6 +246,10 @@ type_specifier:
 		{ record_compound($1, $2, $3, SYM_STRUCT); $$ = $3; }
 	| UNION_KEYW IDENT class_body
 		{ record_compound($1, $2, $3, SYM_UNION); $$ = $3; }
+	| CLASS_KEYW IDENT class_body
+		{ record_compound($1, $2, $3, SYM_CLASS); $$ = $3; }
+	| CLASS_KEYW 	IDENT  ':'  baseclass_specification_list class_body
+		{ record_compound($1, $2, $5, SYM_CLASS); $$ = $5; }
 	| ENUM_KEYW IDENT enum_body
 		{ record_compound($1, $2, $3, SYM_ENUM); $$ = $3; }
 	/*
@@ -262,12 +273,34 @@ simple_type_specifier:
 	| DOUBLE_KEYW
 	| VOID_KEYW
 	| BOOL_KEYW
-	| VA_LIST_KEYW
 	| TYPE			{ (*$1)->tag = SYM_TYPEDEF; $$ = $1; }
+	| FRIEND_KEYW     /* Added by RM */
+	| VIRTUAL_KEYW    /* Added by RM */
+	| WCHAR_KEYW      /* Added by RM */
 	;
+
+/* Added by RM */
+baseclass_specification_list:
+    baseclass_specification       	
+    |  baseclass_specification_list ',' baseclass_specification
+        { $$ = $3;}
+    ;
+
+/* Added by RM */    
+baseclass_specification:
+	access_spec_opt  IDENT  { $$ =$2;  }
+	;
+
+/* Added by RM */
+access_spec_opt:
+	/* empty */					{ $$ = NULL; }
+	 | ACCESS_SPEC_KEYW         
+	 ;
 
 ptr_operator:
 	'*' cvar_qualifier_seq_opt
+		{ $$ = $2 ? $2 : $1; }
+	| '&' cvar_qualifier_seq_opt	/* Added by  Manohar Ravi: for reference variables */	
 		{ $$ = $2 ? $2 : $1; }
 	;
 
@@ -305,15 +338,6 @@ direct_declarator:
 		    $$ = $1;
 		  }
 		}
-	| TYPE
-		{ if (current_name != NULL) {
-		    error_with_pos("unexpected second declaration name");
-		    YYERROR;
-		  } else {
-		    current_name = (*$1)->string;
-		    $$ = $1;
-		  }
-		}
 	| direct_declarator '(' parameter_declaration_clause ')'
 		{ $$ = $4; }
 	| direct_declarator '(' error ')'
@@ -321,6 +345,8 @@ direct_declarator:
 	| direct_declarator BRACKET_PHRASE
 		{ $$ = $2; }
 	| '(' declarator ')'
+		{ $$ = $3; }
+	| '(' error ')'
 		{ $$ = $3; }
 	;
 
@@ -400,12 +426,43 @@ direct_m_abstract_declarator:
 		{ $$ = $3; }
 	;
 
-function_definition:
+/*function_definition:
 	decl_specifier_seq_opt declarator BRACE_PHRASE
 		{ struct string_list *decl = *$2;
 		  *$2 = NULL;
 		  add_symbol(current_name, SYM_NORMAL, decl, is_extern);
 		  $$ = $3;
+		}
+	;
+*/
+/* function_definition modified by RM */
+function_definition:
+	decl_specifier_seq_opt declarator BRACE_PHRASE
+		{ 			
+			int is_cpp_member_function = 0 ;
+			struct string_list *decl = *$2;
+			char *ch = (*$2)->string ;
+			while ( (*$2)!= NULL )
+			{
+				if ( strcmp((*$2)->string , "::") ==0 )
+				{
+					current_name = ch;
+					is_cpp_member_function = 1;					
+					break;
+				}
+				else
+				{
+					ch = (*$2)->string;
+					*$2 = (*$2)->next;
+				}
+			}
+			*$2 = NULL;
+			/* Add symbol only for c functions */
+			if ( is_cpp_member_function == 0 )	
+			{				
+				add_symbol(current_name, SYM_NORMAL, decl, is_extern);
+			}
+			$$ = $3;
 		}
 	;
 
@@ -438,8 +495,26 @@ member_specification:
 member_declaration:
 	decl_specifier_seq_opt member_declarator_list_opt ';'
 		{ $$ = $3; }
+	| decl_specifier_seq_opt member_declarator_list_opt initializer ';' 
+		{ $$ = $4; }		/* added by RM : for pure virtual function*/
+	| access_specifier		/* added by RM */
+	| member_declaration access_specifier  	{ $$ = $2;  }  /* added by RM */
+	| decl_specifier_seq_opt member_declarator_list_opt BRACE_PHRASE  
+		{ $$ = $3; }                      /* added by RM */
+	| decl_specifier_seq_opt '~' decl_specifier_seq_opt member_declarator_list_opt ';' 
+		{ $$ = $5; } /* dsso - for virtual keyword, added by RM */
+	| decl_specifier_seq_opt '~' decl_specifier_seq_opt member_declarator_list_opt BRACE_PHRASE 
+		{ $$ = $5; } /* dsso - for virtual keyword, added by RM */
+	| decl_specifier_seq_opt '~' decl_specifier_seq_opt member_declarator_list_opt initializer ';' 
+		{ $$ = $6; }  /* added for Pure virtual destructor by RM */
 	| error ';'
 		{ $$ = $2; }
+	;
+
+/* Added by RM */ 
+access_specifier:
+	/* empty */		       { $$ = NULL; }
+	| ACCESS_SPEC_KEYW ':' { $$ =$2; }
 	;
 
 member_declarator_list_opt:

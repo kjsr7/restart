@@ -11,7 +11,6 @@
 #include <linux/hrtimer.h>
 #endif
 
-
 struct tvec_base;
 
 struct timer_list {

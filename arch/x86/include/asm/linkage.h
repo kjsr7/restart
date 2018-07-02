@@ -4,7 +4,6 @@
 
 #include <linux/stringify.h>
 
-
 #ifdef __cplusplus
 #undef notrace
 #define notrace
